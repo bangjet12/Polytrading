@@ -1,0 +1,101 @@
+{
+  "summary": "Completed comprehensive end-to-end testing of Polymarket BTC Scalper PHASE 2. All backend APIs (62/62 tests) and frontend UI components tested successfully. Backend is fully functional with real-time WebSocket streaming, market data feeds (Coinbase, OKX, Polymarket), force-graph visualization (100 nodes/180 edges), and paper trading execution. Frontend dashboard with all tabs (Live Monitor, Signals, Force-Graph, Trades, Risk, Settings) working correctly. LIVE mode activation properly blocked due to missing POLY_PRIVATE_KEY as expected.",
+  
+  "backend_issues": {
+    "critical_bugs": [],
+    "flaky_endpoints": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "TopBar / Toast Notification",
+        "issue": "Toast notification overlay intercepts pointer events, blocking logout button click",
+        "selector": "[data-testid='topbar-logout-button']",
+        "fix_priority": "LOW",
+        "workaround": "Use force=True click or JavaScript click, or wait for toast to auto-dismiss",
+        "impact": "Minor UX issue - logout still works with workaround"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Backend: POST /api/auth/login (valid credentials) → 200 + token",
+    "Backend: POST /api/auth/login (invalid credentials) → 401",
+    "Backend: GET /api/state (authenticated) → 200 with complete snapshot",
+    "Backend: GET /api/state/public (unauthenticated) → 200",
+    "Backend: State snapshot structure (spot_price > 0, markets array non-empty, ws_status all connected)",
+    "Backend: Graph structure (exactly 100 nodes, 180 links with correct schema)",
+    "Backend: PUT /api/settings (edge_threshold update) → 200 and persisted",
+    "Backend: POST /api/mode (live with confirm=true) → 400 POLY_PRIVATE_KEY not configured",
+    "Backend: POST /api/mode (paper) → 200",
+    "Backend: POST /api/kill_switch (engage/disengage) → 200 and reflected in state",
+    "Backend: POST /api/select_market → 200 and selected_book refreshed",
+    "Backend: POST /api/wallet/config + GET /api/wallet/status → 200 with configured fields",
+    "Backend: POST /api/webhooks/tradingview (correct secret) → 200 ok=true",
+    "Backend: POST /api/webhooks/tradingview (wrong secret) → 401",
+    "Backend: GET /api/tv_events → 200 with events array",
+    "Backend: WebSocket /api/ws/state → JSON snapshots delivered at 2Hz",
+    "Frontend: Login page loads with pre-filled demo credentials (trader@scalper.local / scalper2026)",
+    "Frontend: Login form submission redirects to dashboard",
+    "Frontend: Top bar BTC price displayed and updating",
+    "Frontend: Top bar WebSocket status indicators (coinbase, okx, polymarket) all connected",
+    "Frontend: Top bar latency badges (P50, P95, P99) displayed",
+    "Frontend: Top bar mode pill shows PAPER",
+    "Frontend: Live Monitor tab - Candlestick chart rendered (lightweight-charts)",
+    "Frontend: Live Monitor tab - Edge meter displayed with percentage and direction",
+    "Frontend: Live Monitor tab - Orderbook panel (Polymarket CLOB) with YES/NO sections",
+    "Frontend: Signals tab - Convergence gauge present",
+    "Frontend: Signals tab - Signal components bars displayed",
+    "Frontend: Signals tab - TradingView log panel present",
+    "Frontend: Force-Graph tab - Canvas rendered (react-force-graph)",
+    "Frontend: Force-Graph tab - Graph stats badge shows n=100 e=180",
+    "Frontend: Force-Graph tab - Freeze and Fit control buttons present",
+    "Frontend: Trades tab - Open Positions panel present",
+    "Frontend: Trades tab - Trade Journal panel present",
+    "Frontend: Risk tab - Equity displayed ($1,000)",
+    "Frontend: Risk tab - Daily PnL displayed ($0)",
+    "Frontend: Risk tab - Daily DD vs halt bar displayed",
+    "Frontend: Risk tab - Kill switch button present and clickable",
+    "Frontend: Risk tab - Kill switch dialog opens with confirm button",
+    "Frontend: Settings tab - Strategy Thresholds form with all fields",
+    "Frontend: Settings tab - Wallet & API configuration section",
+    "Frontend: Settings tab - TradingView webhook URL displayed",
+    "Frontend: LIVE mode activation dialog opens when clicking PAPER pill",
+    "Frontend: LIVE mode activation - Understand checkbox enables confirm button",
+    "Frontend: LIVE mode activation - Clicking Activate LIVE returns error toast (POLY_PRIVATE_KEY not set) as expected",
+    "Frontend: Logout button redirects to login page (with JavaScript click workaround)"
+  ],
+  
+  "test_report_links": [
+    "/app/backend_test.py"
+  ],
+  
+  "success_percentage": {
+    "backend": "100% (62/62 tests passed)",
+    "frontend": "100% (all UI components and flows working)",
+    "integration": "100% (WebSocket streaming, real-time data, paper trading active)"
+  },
+  
+  "action_item_for_main_agent": {
+    "minor_fixes": [
+      "Consider adding z-index management for toast notifications to prevent them from blocking interactive elements like the logout button. Current workaround (force click or wait for auto-dismiss) is acceptable but not ideal UX."
+    ],
+    "notes": [
+      "Paper trading is ACTIVE and working correctly - equity/PnL values are updating as the bot executes simulated trades. This is EXPECTED behavior per the agent-to-agent context note.",
+      "LIVE mode activation correctly blocked due to missing POLY_PRIVATE_KEY - this is the expected security behavior.",
+      "All WebSocket feeds (Coinbase, OKX, Polymarket) are connected and streaming real-time data.",
+      "Force-graph visualization is rendering correctly with exactly 100 nodes and 180 edges as specified.",
+      "All 6 dashboard tabs (Live Monitor, Signals, Force-Graph, Trades, Risk, Settings) are functional and displaying data correctly."
+    ]
+  },
+  
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_test_itself": true
+}

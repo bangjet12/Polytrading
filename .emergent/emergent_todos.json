@@ -5,19 +5,19 @@
   },
   {
     "content": "Phase 2: Get design guidelines for trading dashboard",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Build backend (FastAPI) - market data, strategy, paper executor, risk, journal, TV webhook, graph builder",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Build frontend (React) - Live Monitor, Signals, Force-Graph, Trades, Risk, Settings",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: E2E testing via testing_agent_v3",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 3: LIVE trading hardening - credentials, balances, latency profiling",
