@@ -20,7 +20,10 @@ const Toaster = ({
           cancelButton:
             "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
         },
+        duration: 3000,
       }}
+      offset={64}
+      style={{ zIndex: 60 }}
       {...props} />
   );
 }
