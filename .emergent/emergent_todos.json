@@ -1,34 +1,14 @@
 [
   {
-    "content": "Phase 3a: Strict filter for BTC Up or Down 5m markets only",
+    "content": "Phase 3a-g: Strict 5m filter, auto-cycle, target snapshot, lag detector, paper realism, UI improvements",
     "status": "completed"
   },
   {
-    "content": "Phase 3b: Auto-cycle through 5m markets (pick next when current expires)",
+    "content": "Phase 3 testing: 100% pass (88/88 backend, all frontend, paper trading active)",
     "status": "completed"
   },
   {
-    "content": "Phase 3c: Target price snapshot at market entry + correct fair-value model",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3d: Position settlement at window expiry (not just TP/SL)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3e: CLOB-lag detector as primary edge (model edges marked as display-only)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3f: Realistic paper fills (mid) + correct TP/SL exit prices + cooldown",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3g: UI improvements - Target/Spot cards, lag details, LIVE setup guide, edge type badge",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3 testing: end-to-end check via testing_agent_v3 with the new auto-cycle + lag flow",
-    "status": "in_progress"
+    "content": "Phase 4: LIVE trading on Polymarket (waiting for user to input creds in Settings)",
+    "status": "pending"
   }
 ]
