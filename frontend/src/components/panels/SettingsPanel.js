@@ -94,9 +94,18 @@ export default function SettingsPanel() {
           </Badge>
         </PanelHeader>
         <div className="p-4 space-y-3 text-xs">
-          <div className="text-muted-foreground text-[11px]">
-            Required only when enabling LIVE. Stored in backend process memory — not persisted to disk.
-            For production, set them in <code className="font-mono">/app/backend/.env</code> and restart.
+          <div className="rounded-md border border-[hsl(var(--edge))]/30 bg-[hsl(var(--edge))]/5 p-3 text-[11px] leading-relaxed space-y-1.5">
+            <div className="text-[hsl(var(--edge))] font-medium">How to enable LIVE trading</div>
+            <ol className="list-decimal list-inside text-muted-foreground space-y-1">
+              <li>Get a <strong>Polygon proxy wallet private key</strong> from your Polymarket account (Profile → Export Private Key).</li>
+              <li>Fund the proxy with USDC.e on Polygon (this is your trading bankroll).</li>
+              <li>Set <strong>Funder address</strong> = your Polymarket proxy wallet address (0x…).</li>
+              <li>Generate <strong>API key / secret / passphrase</strong> using <code className="font-mono">/auth/api-key</code> on <code className="font-mono">clob.polymarket.com</code>.</li>
+              <li>Paste all 5 fields below and click <strong>Save wallet config</strong>.</li>
+              <li>Top-right pill: click <strong>PAPER</strong> → confirm → LIVE pulse turns red.</li>
+              <li>Bot will auto-execute on next lag-edge in any <code className="font-mono">BTC Up or Down 5m</code> market.</li>
+            </ol>
+            <div className="text-[10px] text-muted-foreground pt-1">Secrets kept in <em>process memory only</em>. To persist, set them in <code className="font-mono">/app/backend/.env</code> and restart backend.</div>
           </div>
           <WalletField id="pk" label="Polygon private key (0x…)" value={wallet.private_key} onChange={(v) => setWallet((w) => ({ ...w, private_key: v }))} type="password" testid="settings-wallet-pk" />
           <WalletField id="funder" label="Funder address (proxy wallet)" value={wallet.funder_address} onChange={(v) => setWallet((w) => ({ ...w, funder_address: v }))} testid="settings-wallet-funder" />

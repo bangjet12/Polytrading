@@ -15,19 +15,24 @@ export default function EdgeMeterPanel() {
     <Panel data-testid="edge-meter-panel">
       <PanelHeader>
         <PanelTitle>Edge Meter</PanelTitle>
-        <Badge
-          variant="outline"
-          className={`font-mono text-[10px] ${
-            direction === "BUY_YES"
-              ? "text-[hsl(var(--bull))] border-[hsl(var(--bull))]/40"
-              : direction === "BUY_NO"
-              ? "text-[hsl(var(--bear))] border-[hsl(var(--bear))]/40"
-              : "text-muted-foreground"
-          }`}
-          data-testid="edge-direction"
-        >
-          {direction}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="font-mono text-[10px] uppercase" data-testid="edge-type-badge">
+            {edge.edge_type || "—"}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`font-mono text-[10px] ${
+              direction === "BUY_YES"
+                ? "text-[hsl(var(--bull))] border-[hsl(var(--bull))]/40"
+                : direction === "BUY_NO"
+                ? "text-[hsl(var(--bear))] border-[hsl(var(--bear))]/40"
+                : "text-muted-foreground"
+            }`}
+            data-testid="edge-direction"
+          >
+            {direction}
+          </Badge>
+        </div>
       </PanelHeader>
       <div className="p-3 space-y-3">
         <div className="flex items-baseline justify-between">
@@ -84,7 +89,24 @@ export default function EdgeMeterPanel() {
         <div className="text-[10px] font-mono text-muted-foreground">
           reason: {edge.reason || "—"}
         </div>
+        {/* Lag details */}
+        {edge.lag && (
+          <div className="grid grid-cols-3 gap-2 mt-2 text-[10px] font-mono" data-testid="edge-lag-details">
+            <Stat label="Δ spot 5s" value={`${((edge.lag.spot_delta_pct || 0) * 100).toFixed(3)}%`} bull={edge.lag.spot_delta_pct >= 0} />
+            <Stat label="Δ YES mid 5s" value={`${(edge.lag.mid_delta || 0).toFixed(3)}`} bull={edge.lag.mid_delta >= 0} />
+            <Stat label="lag score" value={`${(edge.lag.lag_score || 0).toFixed(3)}`} bull={edge.lag.lag_score >= 0} />
+          </div>
+        )}
       </div>
     </Panel>
+  );
+}
+
+function Stat({ label, value, bull }) {
+  return (
+    <div className="rounded-md border border-border px-2 py-1 bg-[hsl(var(--panel-2))]">
+      <div className="text-[9px] uppercase text-muted-foreground">{label}</div>
+      <div className={`tabular-nums ${bull ? "text-[hsl(var(--bull))]" : "text-[hsl(var(--bear))]"}`}>{value}</div>
+    </div>
   );
 }

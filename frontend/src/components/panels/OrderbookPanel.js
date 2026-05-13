@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useStateStore } from "@/lib/store";
 import { Panel, PanelHeader, PanelTitle } from "@/components/Panel";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -28,6 +29,16 @@ export default function OrderbookPanel() {
   const book = snap?.selected_book || {};
   const yes = book.yes || {};
   const no = book.no || {};
+  const strict5m = !!snap?.strict_5m_only;
+  const targetPrice = selected
+    ? (snap?.market_refs || {})[selected.market_id]?.target_price
+    : null;
+  const spot = snap?.spot_price || 0;
+
+  const visibleMarkets = useMemo(() => {
+    if (strict5m) return markets.filter((m) => m.market_type === "5m_updown");
+    return markets;
+  }, [markets, strict5m]);
 
   const maxBidSize = useMemo(() => {
     const sizes = (yes.bids || []).map((r) => r[1]);
@@ -47,16 +58,33 @@ export default function OrderbookPanel() {
     }
   };
 
+  const onToggleStrict = async (val) => {
+    try {
+      await api.post("/strict_5m", { strict_5m_only: val });
+      toast.success(val ? "Strict 5m mode ON" : "All markets visible");
+    } catch (e) {
+      toast.error("Toggle failed", { description: e.message });
+    }
+  };
+
   return (
     <Panel data-testid="orderbook-panel">
       <PanelHeader>
         <PanelTitle>Polymarket CLOB</PanelTitle>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase text-muted-foreground">5m only</span>
+            <Switch
+              checked={strict5m}
+              onCheckedChange={onToggleStrict}
+              data-testid="strict-5m-toggle"
+            />
+          </div>
           <Badge variant="outline" className="font-mono text-[10px]">
             {selected?.market_type || "—"}
           </Badge>
           <Badge variant="outline" className="font-mono text-[10px]">
-            +{selected?.minutes_to_expiry ? Math.round(selected.minutes_to_expiry) : "—"}m
+            +{selected?.minutes_to_expiry ? selected.minutes_to_expiry.toFixed(1) : "—"}m
           </Badge>
         </div>
       </PanelHeader>
@@ -66,10 +94,10 @@ export default function OrderbookPanel() {
           onValueChange={onSelectMarket}
         >
           <SelectTrigger data-testid="orderbook-market-select" className="w-full">
-            <SelectValue placeholder="Pick a BTC market" />
+            <SelectValue placeholder={strict5m ? "Waiting for next 5m market…" : "Pick a BTC market"} />
           </SelectTrigger>
           <SelectContent className="max-h-80">
-            {markets.slice(0, 40).map((m) => (
+            {visibleMarkets.slice(0, 40).map((m) => (
               <SelectItem key={m.market_id} value={m.market_id}>
                 <span className="font-mono text-[11px] mr-2">[{m.market_type}]</span>
                 {m.question?.slice(0, 70)}
@@ -82,7 +110,35 @@ export default function OrderbookPanel() {
           className="text-xs text-muted-foreground line-clamp-2"
           data-testid="orderbook-selected-question"
         >
-          {selected?.question || "No market selected"}
+          {selected?.question || (strict5m ? "Auto-cycling 5m markets…" : "No market selected")}
+        </div>
+
+        {/* Target vs Spot like Polymarket UI */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-md bg-[hsl(var(--panel-2))] border border-border px-3 py-2">
+            <div className="text-[10px] text-muted-foreground uppercase">Target price</div>
+            <div
+              className="text-lg font-mono tabular-nums text-muted-foreground"
+              data-testid="orderbook-target-price"
+            >
+              {targetPrice != null
+                ? `$${targetPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                : "—"}
+            </div>
+          </div>
+          <div className="rounded-md bg-[hsl(var(--panel-2))] border border-border px-3 py-2">
+            <div className="text-[10px] text-muted-foreground uppercase">Spot now</div>
+            <div
+              className={`text-lg font-mono tabular-nums ${
+                targetPrice != null && spot >= targetPrice
+                  ? "text-[hsl(var(--bull))]"
+                  : "text-[hsl(var(--bear))]"
+              }`}
+              data-testid="orderbook-spot-now"
+            >
+              {spot ? `$${spot.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

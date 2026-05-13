@@ -25,16 +25,19 @@ def skip_reasons(book: dict, signal: dict, edge: dict) -> list[str]:
     s = STATE.settings
     yes = (book or {}).get("yes") or {}
     no = (book or {}).get("no") or {}
+    edge_type = edge.get("edge_type", "model")
     if not edge.get("has_edge"):
         reasons.append("no_edge")
-    if signal.get("conflict"):
+    if signal.get("conflict") and edge_type != "lag":
+        # Lag-based edges are price-action driven; signal conflict still allows trade
         reasons.append("signal_conflict")
     if (yes.get("depth_bid") or 0) < s["min_liquidity_usd"] or (yes.get("depth_ask") or 0) < s["min_liquidity_usd"]:
         reasons.append("low_liquidity")
     if (yes.get("spread") or 1.0) > s["max_spread"]:
         reasons.append("wide_spread")
-    if abs(edge.get("edge", 0)) > s["max_edge_threshold"]:
-        reasons.append("edge_too_large")  # likely stale book or expired market
+    # edge_too_large only applies to model-based edges; lag edges are small by construction
+    if edge_type == "model" and abs(edge.get("edge", 0)) > s["max_edge_threshold"]:
+        reasons.append("edge_too_large")
     if daily_dd_halted():
         reasons.append("daily_dd_halt")
     if daily_cap_reached():

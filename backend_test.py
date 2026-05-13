@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive backend API test suite for Polymarket BTC Scalper.
-Tests all PHASE 2 backend user stories.
+Tests all PHASE 3 backend user stories.
 """
 import asyncio
 import json
@@ -140,6 +140,58 @@ class BackendTester:
                 self.test("State has edge", "edge" in data, f"Keys: {list(data.keys())}")
                 self.test("State has settings", "settings" in data, f"Keys: {list(data.keys())}")
                 
+                # PHASE 3: strict_5m_only, market_refs, selected_market
+                self.test("State has strict_5m_only", "strict_5m_only" in data, f"Keys: {list(data.keys())}")
+                self.test("State strict_5m_only is true by default", data.get("strict_5m_only") is True, f"strict_5m_only={data.get('strict_5m_only')}")
+                self.test("State has market_refs", "market_refs" in data, f"Keys: {list(data.keys())}")
+                
+                # Check selected_market
+                selected = data.get("selected_market")
+                if selected:
+                    self.test("selected_market has market_type", "market_type" in selected, f"selected_market keys: {list(selected.keys())}")
+                    market_type = selected.get("market_type")
+                    self.test("selected_market.market_type is '5m_updown' (strict mode)", market_type == "5m_updown", f"market_type={market_type}")
+                    # Check if target_price is captured in market_refs
+                    mid = selected.get("market_id")
+                    if mid:
+                        refs = data.get("market_refs", {})
+                        if mid in refs:
+                            self.test("market_refs has target_price for selected market", "target_price" in refs[mid], f"refs[{mid}]={refs.get(mid)}")
+                else:
+                    print("   ℹ️  selected_market is null (no 5m market available or waiting for auto-cycle)")
+                
+                # Check markets array for 5m_updown classification
+                markets = data.get("markets", [])
+                five_m_markets = [m for m in markets if m.get("market_type") == "5m_updown"]
+                self.test("markets array contains '5m_updown' classified markets", len(five_m_markets) > 0, f"5m_updown count: {len(five_m_markets)}")
+                if five_m_markets:
+                    print(f"   Found {len(five_m_markets)} 5m_updown markets")
+                
+                # PHASE 3: edge.lag field
+                edge = data.get("edge", {})
+                self.test("edge has 'lag' field", "lag" in edge, f"edge keys: {list(edge.keys())}")
+                lag = edge.get("lag", {})
+                if lag:
+                    self.test("edge.lag has 'has_lag'", "has_lag" in lag, f"lag keys: {list(lag.keys())}")
+                    self.test("edge.lag has 'direction'", "direction" in lag, f"lag keys: {list(lag.keys())}")
+                    self.test("edge.lag has 'spot_delta_pct'", "spot_delta_pct" in lag, f"lag keys: {list(lag.keys())}")
+                    self.test("edge.lag has 'mid_delta'", "mid_delta" in lag, f"lag keys: {list(lag.keys())}")
+                    self.test("edge.lag has 'expected_mid_delta'", "expected_mid_delta" in lag, f"lag keys: {list(lag.keys())}")
+                    self.test("edge.lag has 'lag_score'", "lag_score" in lag, f"lag keys: {list(lag.keys())}")
+                
+                self.test("edge has 'edge_type'", "edge_type" in edge, f"edge keys: {list(edge.keys())}")
+                edge_type = edge.get("edge_type")
+                self.test("edge.edge_type is 'lag' or 'model'", edge_type in ["lag", "model"], f"edge_type={edge_type}")
+                
+                # PHASE 3: signals structure
+                signals = data.get("signals", {})
+                self.test("signals has 'rsi14'", "rsi14" in signals, f"signals keys: {list(signals.keys())}")
+                self.test("signals has 'ema_fast'", "ema_fast" in signals, f"signals keys: {list(signals.keys())}")
+                self.test("signals has 'ema_slow'", "ema_slow" in signals, f"signals keys: {list(signals.keys())}")
+                self.test("signals has 'convergence_score'", "convergence_score" in signals, f"signals keys: {list(signals.keys())}")
+                self.test("signals has 'label'", "label" in signals, f"signals keys: {list(signals.keys())}")
+                self.test("signals has 'conflict'", "conflict" in signals, f"signals keys: {list(signals.keys())}")
+                
                 return True
             return False
         except Exception as e:
@@ -242,6 +294,51 @@ class BackendTester:
             return False
         except Exception as e:
             self.test("POST /api/mode paper request succeeded", False, str(e))
+            return False
+
+    def test_strict_5m_toggle(self):
+        """Test POST /api/strict_5m to toggle strict_5m_only."""
+        print("\n🔍 Testing: POST /api/strict_5m (toggle strict_5m_only)")
+        if not self.token:
+            self.test("Strict 5m toggle requires token", False, "No token available")
+            return False
+        try:
+            # Turn OFF strict mode
+            resp_off = requests.post(
+                f"{BASE_URL}/strict_5m",
+                headers={"Authorization": f"Bearer {self.token}"},
+                json={"strict_5m_only": False},
+                timeout=10,
+            )
+            self.test("POST /api/strict_5m (off) returns 200", resp_off.status_code == 200, f"Got {resp_off.status_code}")
+            if resp_off.status_code == 200:
+                data_off = resp_off.json()
+                self.test("strict_5m_only set to false", data_off.get("strict_5m_only") is False, f"strict_5m_only={data_off.get('strict_5m_only')}")
+                
+                # Verify in state
+                resp_state = requests.get(
+                    f"{BASE_URL}/state",
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    timeout=10,
+                )
+                if resp_state.status_code == 200:
+                    state = resp_state.json()
+                    self.test("State reflects strict_5m_only=false", state.get("strict_5m_only") is False, f"strict_5m_only={state.get('strict_5m_only')}")
+                
+                # Turn ON strict mode
+                resp_on = requests.post(
+                    f"{BASE_URL}/strict_5m",
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    json={"strict_5m_only": True},
+                    timeout=10,
+                )
+                if resp_on.status_code == 200:
+                    data_on = resp_on.json()
+                    self.test("strict_5m_only set to true", data_on.get("strict_5m_only") is True, f"strict_5m_only={data_on.get('strict_5m_only')}")
+                return True
+            return False
+        except Exception as e:
+            self.test("POST /api/strict_5m request succeeded", False, str(e))
             return False
 
     def test_kill_switch(self):
@@ -489,7 +586,7 @@ async def main():
     tester = BackendTester()
     
     print("=" * 60)
-    print("🚀 POLYMARKET BTC SCALPER - BACKEND API TEST SUITE")
+    print("🚀 POLYMARKET BTC SCALPER - BACKEND API TEST SUITE (PHASE 3)")
     print("=" * 60)
     print(f"Base URL: {BASE_URL}")
     print(f"Demo credentials: {DEMO_EMAIL} / {DEMO_PASSWORD}")
@@ -501,6 +598,7 @@ async def main():
     tester.test_state_authenticated()
     tester.test_state_public()
     tester.test_settings_update()
+    tester.test_strict_5m_toggle()  # PHASE 3
     tester.test_mode_live_blocked()
     tester.test_mode_paper_success()
     tester.test_kill_switch()

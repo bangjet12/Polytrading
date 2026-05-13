@@ -164,6 +164,20 @@ async def kill_switch(body: KillBody, user: str = Depends(verify_token)):
     return {"kill_switch": STATE.kill_switch}
 
 
+class StrictBody(BaseModel):
+    strict_5m_only: bool
+
+
+@api.post("/strict_5m")
+async def set_strict_5m(body: StrictBody, user: str = Depends(verify_token)):
+    STATE.strict_5m_only = body.strict_5m_only
+    if body.strict_5m_only:
+        # clear current selection so auto-cycle picks a 5m market
+        STATE.selected_market = None
+        STATE.selected_book = {}
+    return {"strict_5m_only": STATE.strict_5m_only}
+
+
 class SelectMarketBody(BaseModel):
     market_id: str
 

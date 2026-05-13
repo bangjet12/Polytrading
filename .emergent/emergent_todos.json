@@ -1,26 +1,34 @@
 [
   {
-    "content": "Phase 1: POC complete - all 8 user stories passing",
+    "content": "Phase 3a: Strict filter for BTC Up or Down 5m markets only",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Get design guidelines for trading dashboard",
+    "content": "Phase 3b: Auto-cycle through 5m markets (pick next when current expires)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build backend (FastAPI) - market data, strategy, paper executor, risk, journal, TV webhook, graph builder",
+    "content": "Phase 3c: Target price snapshot at market entry + correct fair-value model",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build frontend (React) - Live Monitor, Signals, Force-Graph, Trades, Risk, Settings",
+    "content": "Phase 3d: Position settlement at window expiry (not just TP/SL)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: E2E testing via testing_agent_v3 - 100% pass (62/62 backend, all frontend)",
+    "content": "Phase 3e: CLOB-lag detector as primary edge (model edges marked as display-only)",
     "status": "completed"
   },
   {
-    "content": "Phase 3 (optional): LIVE trading hardening - credentials, balances, latency profiling - can be added on request",
-    "status": "pending"
+    "content": "Phase 3f: Realistic paper fills (mid) + correct TP/SL exit prices + cooldown",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 3g: UI improvements - Target/Spot cards, lag details, LIVE setup guide, edge type badge",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 3 testing: end-to-end check via testing_agent_v3 with the new auto-cycle + lag flow",
+    "status": "in_progress"
   }
 ]

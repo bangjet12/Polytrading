@@ -39,6 +39,9 @@ class RuntimeState:
     signals: dict = field(default_factory=dict)
     edge: dict = field(default_factory=dict)
     decision_loop_latencies_ms: deque = field(default_factory=lambda: deque(maxlen=400))
+    # rolling histories for lag detection (last ~30s)
+    spot_history: deque = field(default_factory=lambda: deque(maxlen=120))  # (ts, price)
+    mid_history: deque = field(default_factory=lambda: deque(maxlen=120))   # (ts, yes_mid)
 
     # graph
     graph: dict = field(default_factory=lambda: {"nodes": [], "links": []})
@@ -50,6 +53,11 @@ class RuntimeState:
     mode: str = "paper"  # paper / live
     bot_running: bool = True
     kill_switch: bool = False
+    strict_5m_only: bool = True  # if True, only auto-cycle "BTC Up or Down 5m" markets
+
+    # per-market reference (target) prices, captured the first time we see the market.
+    # key = market_id, value = {"target_price": float, "captured_ts": float, "end_ts": float}
+    market_refs: dict = field(default_factory=dict)
 
     # risk + journal
     equity: float = 1000.0
@@ -66,9 +74,9 @@ class RuntimeState:
         "daily_dd_halt_pct": 0.02,
         "hard_stop_pct": 0.004,
         "edge_threshold": 0.003,  # 0.3 %
-        "max_edge_threshold": 0.05,  # ignore extreme edges (likely stale)
+        "max_edge_threshold": 0.15,  # 15% — beyond this, book is likely stale
         "min_liquidity_usd": 100.0,
-        "max_spread": 0.04,
+        "max_spread": 0.08,  # 5m books often have 4-7% spreads near expiry
         "daily_trade_cap": 200,
         "target_market_type": "any",  # any / 5m_updown / hourly_above / daily_above
         "min_minutes_to_expiry": 1,
@@ -111,6 +119,8 @@ class RuntimeState:
             "mode": self.mode,
             "bot_running": self.bot_running,
             "kill_switch": self.kill_switch,
+            "strict_5m_only": self.strict_5m_only,
+            "market_refs": dict(self.market_refs),
             "equity": self.equity,
             "starting_equity_today": self.starting_equity_today,
             "daily_pnl": self.daily_pnl,

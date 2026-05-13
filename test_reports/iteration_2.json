@@ -1,0 +1,122 @@
+{
+  "summary": "Completed comprehensive end-to-end testing of Polymarket BTC Scalper PHASE 3. All backend APIs (88/88 tests) and frontend UI components tested successfully. Backend is fully functional with Phase 3 features: strict_5m_only filter (default true), auto-cycle to next 5m market, target-price snapshot in market_refs, CLOB-lag detection as primary edge (edge.lag with all subfields), edge_type='lag' or 'model', signals structure with rsi14/ema_fast/ema_slow/convergence_score/label/conflict. Frontend dashboard with all 6 tabs working correctly, including new LIVE trading instructions (7-step guide) in Settings panel.",
+  
+  "backend_issues": {
+    "critical_bugs": [],
+    "flaky_endpoints": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Backend: POST /api/auth/login (valid credentials) → 200 + token",
+    "Backend: POST /api/auth/login (invalid credentials) → 401",
+    "Backend: GET /api/state (authenticated) → 200 with complete snapshot",
+    "Backend: GET /api/state/public (unauthenticated) → 200",
+    "Backend: State snapshot structure (spot_price > 0, markets array non-empty, ws_status all connected)",
+    "Backend: Graph structure (exactly 100 nodes, 180 links with correct schema)",
+    "Backend: PHASE 3 - State has strict_5m_only field (default true)",
+    "Backend: PHASE 3 - selected_market has market_type='5m_updown' when strict mode ON",
+    "Backend: PHASE 3 - market_refs object contains target_price for selected market",
+    "Backend: PHASE 3 - markets array contains '5m_updown' classified markets (found 1)",
+    "Backend: PHASE 3 - edge.lag field with all subfields (has_lag, direction, spot_delta_pct, mid_delta, expected_mid_delta, lag_score)",
+    "Backend: PHASE 3 - edge.edge_type is 'lag' or 'model'",
+    "Backend: PHASE 3 - signals object has rsi14, ema_fast, ema_slow, convergence_score, label, conflict",
+    "Backend: PUT /api/settings (edge_threshold update) → 200 and persisted",
+    "Backend: POST /api/strict_5m (toggle strict_5m_only) → 200 and reflected in state",
+    "Backend: POST /api/mode (live with confirm=true) → 200 when POLY_PRIVATE_KEY is set",
+    "Backend: POST /api/mode (paper) → 200",
+    "Backend: POST /api/kill_switch (engage/disengage) → 200 and reflected in state",
+    "Backend: POST /api/select_market → 200 and selected_book refreshed",
+    "Backend: POST /api/wallet/config + GET /api/wallet/status → 200 with configured fields",
+    "Backend: POST /api/webhooks/tradingview (correct secret) → 200 ok=true",
+    "Backend: POST /api/webhooks/tradingview (wrong secret) → 401",
+    "Backend: GET /api/tv_events → 200 with events array",
+    "Backend: WebSocket /api/ws/state → JSON snapshots delivered at 2Hz",
+    "Frontend: Login page loads with pre-filled demo credentials (trader@scalper.local)",
+    "Frontend: Login form submission redirects to dashboard",
+    "Frontend: Top bar BTC price displayed and updating ($79,606)",
+    "Frontend: Top bar WebSocket status indicators (coinbase, okx, polymarket) all connected",
+    "Frontend: Top bar latency badges (P50, P95, P99) displayed",
+    "Frontend: Top bar mode pill shows PAPER initially",
+    "Frontend: Live Monitor tab - Candlestick chart rendered (lightweight-charts)",
+    "Frontend: Live Monitor tab - Edge meter displayed with percentage (+0.00%)",
+    "Frontend: Live Monitor tab - Edge type badge shows 'model' or 'lag'",
+    "Frontend: Live Monitor tab - Edge direction displayed (NONE/BUY_YES/BUY_NO)",
+    "Frontend: Live Monitor tab - Edge skip reasons displayed",
+    "Frontend: Live Monitor tab - Edge lag details panel with Δ spot 5s / Δ YES mid 5s / lag score",
+    "Frontend: Orderbook panel - Polymarket CLOB with YES/NO sections",
+    "Frontend: Orderbook panel - Market select dropdown filtered to 5m_updown markets when strict 5m toggle ON",
+    "Frontend: Orderbook panel - Target price displayed ($79,585.43)",
+    "Frontend: Orderbook panel - Spot now displayed ($79,606)",
+    "Frontend: Orderbook panel - Strict 5m toggle Switch clickable and functional",
+    "Frontend: Signals tab - Convergence score value displayed (+0.084)",
+    "Frontend: Signals tab - Signal components bars present",
+    "Frontend: Force-Graph tab - Canvas rendered (react-force-graph)",
+    "Frontend: Force-Graph tab - Graph stats badge shows n=100 e=180",
+    "Frontend: Force-Graph tab - Freeze button present and clickable",
+    "Frontend: Force-Graph tab - Fit button present and clickable",
+    "Frontend: Trades tab - Open Positions panel present",
+    "Frontend: Trades tab - Trade Journal panel present",
+    "Frontend: Risk tab - Equity displayed ($1,009.34)",
+    "Frontend: Risk tab - Daily PnL displayed ($9.34)",
+    "Frontend: Risk tab - Daily DD vs halt bar displayed",
+    "Frontend: Risk tab - Kill switch button present and clickable",
+    "Frontend: Risk tab - Kill switch dialog opens with confirm button",
+    "Frontend: Settings tab - Strategy Thresholds form with all fields (risk_per_trade, daily_dd_halt, hard_stop, edge_threshold, max_edge, min_liquidity, max_spread, daily_trade_cap)",
+    "Frontend: Settings tab - Save thresholds button present",
+    "Frontend: Settings tab - Wallet & API configuration section",
+    "Frontend: Settings tab - PHASE 3 - 'How to enable LIVE trading' info box with 7-step instructions",
+    "Frontend: Settings tab - PHASE 3 - Instructions mention Polygon proxy wallet, private key, API credentials",
+    "Frontend: Settings tab - TradingView webhook URL displayed",
+    "Frontend: LIVE mode activation dialog opens when clicking PAPER pill",
+    "Frontend: LIVE mode activation - Understand checkbox present and functional",
+    "Frontend: LIVE mode activation - Activate LIVE button disabled until checkbox checked",
+    "Frontend: LIVE mode activation - Activate LIVE button enabled after checkbox checked",
+    "Frontend: LIVE mode activation - Clicking Activate LIVE switches mode to LIVE (when wallet configured)"
+  ],
+  
+  "test_report_links": [
+    "/app/backend_test.py"
+  ],
+  
+  "success_percentage": {
+    "backend": "100% (88/88 tests passed)",
+    "frontend": "100% (all UI components and flows working)",
+    "integration": "100% (WebSocket streaming, real-time data, paper trading active, LIVE mode switch functional)"
+  },
+  
+  "action_item_for_main_agent": {
+    "notes": [
+      "PHASE 3 features fully implemented and working:",
+      "  • strict_5m_only filter (default true) with toggle endpoint /api/strict_5m",
+      "  • Auto-cycle to next 5m market when current expires (visible in orderbook panel)",
+      "  • Target-price snapshot captured in market_refs object for each 5m market",
+      "  • CLOB-lag detection as primary edge: edge.lag object with has_lag, direction, spot_delta_pct, mid_delta, expected_mid_delta, lag_score",
+      "  • edge.edge_type field distinguishes 'lag' (primary) vs 'model' (display only) edges",
+      "  • Signals structure includes rsi14, ema_fast, ema_slow, convergence_score, label, conflict",
+      "  • 90s cooldown per market after any close (implemented in runtime.py)",
+      "  • Realistic paper fills at mid + correct TP/SL exit prices (0.6% TP, -0.4% hard stop)",
+      "  • Settlement-at-expiry logic (pays 1.0 if won, 0.0 if lost based on spot vs target)",
+      "  • LIVE credentials setup guide: 7-step instructions in Settings → Wallet & API panel",
+      "",
+      "Paper trading is ACTIVE with 7 trades executed today (equity: $1,009.34, daily PnL: +$9.34).",
+      "All WebSocket feeds (Coinbase, OKX, Polymarket) are connected and streaming real-time data.",
+      "Force-graph visualization rendering correctly with exactly 100 nodes and 180 edges.",
+      "All 6 dashboard tabs (Live Monitor, Signals, Force-Graph, Trades, Risk, Settings) functional.",
+      "",
+      "LIVE mode activation: Successfully switches to LIVE when wallet credentials are configured (even with dummy values for testing). In production, actual order placement would fail with invalid credentials, which is the correct security behavior."
+    ]
+  },
+  
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_test_itself": false
+}

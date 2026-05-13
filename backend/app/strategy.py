@@ -77,22 +77,44 @@ def compute_signals(closes: list[float], deriv: dict) -> dict:
     }
 
 
-def estimate_fair_prob_above(spot: float, signal: dict, minutes_to_expiry: float, barrier: float) -> float:
+def realized_5m_sigma(closes: list[float]) -> float:
+    """Estimate 5-minute return stdev in absolute USD using last N candle log-returns.
+
+    Falls back to 0.10% of price when not enough data.
+    """
+    if len(closes) < 10:
+        return max(1.0, (closes[-1] if closes else 1.0) * 0.001)
+    rets = []
+    for i in range(1, len(closes)):
+        if closes[i - 1] > 0:
+            rets.append((closes[i] - closes[i - 1]) / closes[i - 1])
+    if len(rets) < 5:
+        return max(1.0, (closes[-1] if closes else 1.0) * 0.001)
+    rets = rets[-60:]
+    mean = sum(rets) / len(rets)
+    var = sum((r - mean) ** 2 for r in rets) / max(1, len(rets) - 1)
+    sigma_pct = math.sqrt(var)
+    return max(1.0, closes[-1] * sigma_pct)
+
+
+def estimate_fair_prob_above(spot: float, signal: dict, minutes_to_expiry: float, barrier: float, sigma5: float = None) -> float:
     if minutes_to_expiry <= 0:
         return 1.0 if spot > barrier else 0.0
-    sigma5 = max(spot * 0.0025, 1.0)
-    h = sigma5 * math.sqrt(minutes_to_expiry / 5.0)
+    if sigma5 is None:
+        sigma5 = max(spot * 0.001, 1.0)
+    h = sigma5 * math.sqrt(max(minutes_to_expiry, 0.05) / 5.0)
     z = (spot - barrier) / h if h > 0 else 0.0
     base_p = 0.5 * (1 + math.erf(z / math.sqrt(2)))
     tilt = 0.05 * signal.get("convergence_score", 0)
     return max(0.01, min(0.99, base_p + tilt))
 
 
-def estimate_fair_prob_updown(spot: float, signal: dict, minutes_to_expiry: float, ref_price: float) -> float:
+def estimate_fair_prob_updown(spot: float, signal: dict, minutes_to_expiry: float, ref_price: float, sigma5: float = None) -> float:
     if minutes_to_expiry <= 0:
         return 1.0 if spot > ref_price else 0.0
-    sigma5 = max(spot * 0.0025, 1.0)
-    h = sigma5 * math.sqrt(minutes_to_expiry / 5.0)
+    if sigma5 is None:
+        sigma5 = max(spot * 0.001, 1.0)
+    h = sigma5 * math.sqrt(max(minutes_to_expiry, 0.05) / 5.0)
     z = (spot - ref_price) / h if h > 0 else 0.0
     base_p = 0.5 * (1 + math.erf(z / math.sqrt(2)))
     tilt = 0.10 * signal.get("convergence_score", 0)
@@ -109,7 +131,58 @@ def extract_barrier(question: str, fallback: float) -> float:
         return fallback
 
 
-def detect_edge(spot: float, market: dict, book: dict, signal: dict, edge_threshold: float = 0.003) -> dict:
+def detect_lag(spot_history: list, mid_history: list, window_s: float = 5.0) -> dict:
+    """Detect when spot price has moved but CLOB YES mid hasn't caught up.
+
+    Returns dict {has_lag, direction, spot_delta_pct, mid_delta, expected_mid_delta, lag_score}.
+    """
+    if not spot_history or not mid_history:
+        return {"has_lag": False, "direction": "NONE", "spot_delta_pct": 0,
+                "mid_delta": 0, "expected_mid_delta": 0, "lag_score": 0}
+    now = spot_history[-1][0]
+    # Find oldest spot tick within window_s
+    s_old = next((p for (t, p) in spot_history if now - t <= window_s), None)
+    if s_old is None:
+        return {"has_lag": False, "direction": "NONE", "spot_delta_pct": 0,
+                "mid_delta": 0, "expected_mid_delta": 0, "lag_score": 0}
+    s_new = spot_history[-1][1]
+    if s_old <= 0:
+        return {"has_lag": False, "direction": "NONE", "spot_delta_pct": 0,
+                "mid_delta": 0, "expected_mid_delta": 0, "lag_score": 0}
+    spot_delta_pct = (s_new - s_old) / s_old
+
+    # Filter mid history to same window
+    rel_mids = [m for (t, m) in mid_history if now - t <= window_s and m is not None]
+    if len(rel_mids) < 2:
+        return {"has_lag": False, "direction": "NONE", "spot_delta_pct": spot_delta_pct,
+                "mid_delta": 0, "expected_mid_delta": 0, "lag_score": 0}
+    mid_delta = rel_mids[-1] - rel_mids[0]
+    # Heuristic: 0.1% spot move ≈ 0.05 probability shift in YES (Up) for a near-expiry market
+    expected_mid_delta = spot_delta_pct * 50  # 1% spot ≈ +50% YES probability for sub-5m
+    lag = expected_mid_delta - mid_delta
+    if abs(spot_delta_pct) < 0.0001:  # spot must have moved >= 0.01%
+        return {"has_lag": False, "direction": "NONE", "spot_delta_pct": spot_delta_pct,
+                "mid_delta": mid_delta, "expected_mid_delta": expected_mid_delta, "lag_score": lag}
+    # Direction: if spot up, expect YES up; if YES hasn't moved that much yet, BUY_YES
+    if lag > 0.01:  # expected YES move > 1% above actual
+        return {"has_lag": True, "direction": "BUY_YES", "spot_delta_pct": spot_delta_pct,
+                "mid_delta": mid_delta, "expected_mid_delta": expected_mid_delta, "lag_score": lag}
+    if lag < -0.01:
+        return {"has_lag": True, "direction": "BUY_NO", "spot_delta_pct": spot_delta_pct,
+                "mid_delta": mid_delta, "expected_mid_delta": expected_mid_delta, "lag_score": lag}
+    return {"has_lag": False, "direction": "NONE", "spot_delta_pct": spot_delta_pct,
+            "mid_delta": mid_delta, "expected_mid_delta": expected_mid_delta, "lag_score": lag}
+
+
+def detect_edge(
+    spot: float,
+    market: dict,
+    book: dict,
+    signal: dict,
+    edge_threshold: float = 0.003,
+    target_price: Optional[float] = None,
+    closes: Optional[list[float]] = None,
+) -> dict:
     yes = (book or {}).get("yes") or {}
     yes_mid = yes.get("mid")
     if yes_mid is None or spot <= 0:
@@ -118,22 +191,26 @@ def detect_edge(spot: float, market: dict, book: dict, signal: dict, edge_thresh
                 "barrier": None}
     mins = market.get("minutes_to_expiry") or 60.0
     q = (market.get("question") or "").lower()
+    sigma5 = realized_5m_sigma(closes or [])
     if "above" in q or "reach" in q:
         barrier = extract_barrier(market.get("question", ""), spot)
-        fair = estimate_fair_prob_above(spot, signal, mins, barrier)
+        fair = estimate_fair_prob_above(spot, signal, mins, barrier, sigma5=sigma5)
     else:
-        barrier = spot
-        fair = estimate_fair_prob_updown(spot, signal, mins, spot)
+        barrier = float(target_price) if (target_price is not None) else spot
+        fair = estimate_fair_prob_updown(spot, signal, mins, barrier, sigma5=sigma5)
     edge = fair - yes_mid
     if signal.get("conflict"):
         return {"has_edge": False, "direction": "NONE", "reason": "signal conflict",
-                "market_yes_prob": yes_mid, "fair_yes_prob": fair, "edge": edge, "barrier": barrier}
+                "market_yes_prob": yes_mid, "fair_yes_prob": fair, "edge": edge, "barrier": barrier,
+                "sigma5": sigma5}
     if abs(edge) <= edge_threshold:
         return {"has_edge": False, "direction": "NONE", "reason": "edge below threshold",
-                "market_yes_prob": yes_mid, "fair_yes_prob": fair, "edge": edge, "barrier": barrier}
+                "market_yes_prob": yes_mid, "fair_yes_prob": fair, "edge": edge, "barrier": barrier,
+                "sigma5": sigma5}
     direction = "BUY_YES" if edge > 0 else "BUY_NO"
     return {"has_edge": True, "direction": direction, "reason": "edge above threshold",
-            "market_yes_prob": yes_mid, "fair_yes_prob": fair, "edge": edge, "barrier": barrier}
+            "market_yes_prob": yes_mid, "fair_yes_prob": fair, "edge": edge, "barrier": barrier,
+            "sigma5": sigma5}
 
 
 # ====================== Force-graph builder ======================
